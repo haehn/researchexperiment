@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Papaya Viewer</title>
+    <script
+      type="text/javascript"
+      src="https://cdn.rawgit.com/rii-mango/Papaya/master/release/current/standard/papaya.js"
+    ></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@1.5.2"></script>
+    <script type="text/javascript">
+      var params = [];
+      params["images"] = ["https://gaiborjosue.github.io/brainchop/experimental_mode/CanvasVersion/MRI Sample/t1_c.nii.gz"];
+      params["fullScreen"] = true;
+    </script>
+  </head>
+  <body>
+    <div class="papaya" data-params="params"></div>
+
+    <script type="text/javascript">
+
+        async function loadModel() {
+        // Tensorflow.js
+
+            let arrayBuffer = papayaContainers[0].viewer.screenVolumes[0].volume.imageData.data;
+
+            let dimensions = [papayaContainers[0].viewer.screenVolumes[0].volume.header.imageDimensions.xDim, papayaContainers[0].viewer.screenVolumes[0].volume.header.imageDimensions.yDim, papayaContainers[0].viewer.screenVolumes[0].volume.header.imageDimensions.zDim];
+
+            let tensor = tf.tensor(arrayBuffer, dimensions);
+
+            tensor = tensor.reshape([-1, dimensions[2], dimensions[1], dimensions[0], 1]);
+
+            const model = await tf.loadLayersModel("https://raw.githubusercontent.com/gaiborjosue/brainchop/master/models/model5_gw_ae/model.json");
+
+            const prediction = model.predict(tensor);
+
+            //*************************************************************//
+            let predictionArray = prediction.dataSync();
+            console.log(prediction)
+            
+            let addImageParams = []
+        
+            addImageParams["binaryImages"] = {lut: "Spectrum"};
+
+            papaya.Container.addImage(0, [predictionArray], addImageParams);
+        }
+
+        setTimeout(() => {
+            papaya.Container.startPapaya();
+            loadModel();
+        }, 2000);
+
+    
+    </script>
+
+    
+  </body>
+</html>
