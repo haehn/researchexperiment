@@ -7,6 +7,9 @@
       src="https://cdn.rawgit.com/rii-mango/Papaya/master/release/current/standard/papaya.js"
     ></script>
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@1.5.2"></script>
+
+    <script type="text/javascript" src="libs/nifti-reader.js"></script>
+    <script type="text/javascript" src="libs/nifti-reader-min.js"></script>
     <script type="text/javascript">
       var params = [];
       params["images"] = ["https://gaiborjosue.github.io/brainchop/experimental_mode/CanvasVersion/MRI Sample/t1_c.nii.gz"];
@@ -18,10 +21,100 @@
 
     <script type="text/javascript">
 
+        array2ArrayBuffer = (array, datatypeCode) => {
+          let typedArray;
+
+          if (datatypeCode === nifti.NIFTI1.TYPE_UINT8) {
+              typedArray =  Uint8Array.from(array);
+          } else if (datatypeCode === nifti.NIFTI1.TYPE_INT16) {
+              typedArray =  Int16Array.from(array);
+          } else if (datatypeCode === nifti.NIFTI1.TYPE_INT32) {
+              typedArray =  Int32Array.from(array);
+          } else if (datatypeCode === nifti.NIFTI1.TYPE_FLOAT32) {
+              typedArray =  Float32Array.from(array);
+          } else if (datatypeCode === nifti.NIFTI1.TYPE_FLOAT64) {
+              typedArray =  Float64Array.from(array);
+          } else if (datatypeCode === nifti.NIFTI1.TYPE_INT8) {
+              typedArray =  Int8Array.from(array);
+          } else if (datatypeCode === nifti.NIFTI1.TYPE_UINT16) {
+              typedArray =  Uint16Array.from(array);
+          } else if (datatypeCode === nifti.NIFTI1.TYPE_UINT32) {
+              typedArray =  Uint32Array.from(array);
+          } else {
+              return;
+          }  
+
+
+          // Convert typedArray to ArrayBuffer and return ArrayBuffer
+          return typedArray.buffer.slice(typedArray.byteOffset, typedArray.byteLength + typedArray.byteOffset)
+        }
+
+        arrayBuffer2Array = (arrayBuffer, datatypeCode) => {
+          let typedArrData;
+
+          if (datatypeCode === nifti.NIFTI1.TYPE_UINT8) {
+              typedArrData = new Uint8Array(arrayBuffer);
+          } else if (datatypeCode === nifti.NIFTI1.TYPE_INT16) {
+              typedArrData = new Int16Array(arrayBuffer);
+          } else if (datatypeCode === nifti.NIFTI1.TYPE_INT32) {
+              typedArrData = new Int32Array(arrayBuffer);
+          } else if (datatypeCode === nifti.NIFTI1.TYPE_FLOAT32) {
+              typedArrData = new Float32Array(arrayBuffer);
+          } else if (datatypeCode === nifti.NIFTI1.TYPE_FLOAT64) {
+              typedArrData = new Float64Array(arrayBuffer);
+          } else if (datatypeCode === nifti.NIFTI1.TYPE_INT8) {
+              typedArrData = new Int8Array(arrayBuffer);
+          } else if (datatypeCode === nifti.NIFTI1.TYPE_UINT16) {
+              typedArrData = new Uint16Array(arrayBuffer);
+          } else if (datatypeCode === nifti.NIFTI1.TYPE_UINT32) {
+              typedArrData = new Uint32Array(arrayBuffer);
+          } else {
+              return;
+          }  
+
+
+          // Convert typedArray to array using Spread syntax[...]
+          let arr = [...typedArrData];
+          return arr;
+        }
+
+        createNiftiOutArrayBuffer = (rawData, data) => {
+          // read rawNiftiData header
+          let header = papayaContainers[0].viewer.volume.header.fileFormat.nifti;
+          let imageData = [];
+          let outNifti = []
+          let headerArrBuf = [];
+          let outImageArray = [];
+
+          let imageOffset = header.vox_offset,
+              timeDim = 1,
+              statDim = 1;
+
+          if (header.dims[4]) {
+              timeDim = header.dims[4];
+          }
+
+          if (header.dims[5]) {
+              statDim = header.dims[5];
+          }
+
+          let imageSize = header.dims[1] * header.dims[2] * header.dims[3] * timeDim * statDim * (header.numBitsPerVoxel / 8);
+
+          headerArrBuf = rawData.slice(0, imageOffset);
+
+          // Convert to normal array
+          let headerArray = arrayBuffer2Array(headerArrBuf, header.datatypeCode);
+
+          outImageArray = headerArray.concat(data)
+
+          return    array2ArrayBuffer(outImageArray, header.datatypeCode); 
+        };
+
         async function loadModel() {
         // Tensorflow.js
 
             let arrayBuffer = papayaContainers[0].viewer.screenVolumes[0].volume.imageData.data;
+            
 
             let dimensions = [papayaContainers[0].viewer.screenVolumes[0].volume.header.imageDimensions.xDim, papayaContainers[0].viewer.screenVolumes[0].volume.header.imageDimensions.yDim, papayaContainers[0].viewer.screenVolumes[0].volume.header.imageDimensions.zDim];
 
@@ -35,13 +128,19 @@
 
             //*************************************************************//
             let predictionArray = prediction.dataSync();
-            console.log(prediction)
-            
-            let addImageParams = []
-        
-            addImageParams["binaryImages"] = {lut: "Spectrum"};
 
-            papaya.Container.addImage(0, [predictionArray], addImageParams);
+            let predictionArrayB = createNiftiOutArrayBuffer(arrayBuffer, Array.from(predictionArray));
+
+
+            let params = [];
+
+            params["binaryImages"] = [predictionArrayB];
+
+            params["binaryImages"] = {lut: "Spectrum"};
+            
+
+            papaya.Container.addImage(0, [predictionArrayB], {"binaryImages": {lut: "Spectrum"}});
+        
         }
 
         setTimeout(() => {
