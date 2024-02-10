@@ -2,14 +2,13 @@
 <html>
   <head>
     <title>Papaya Viewer</title>
-    <script
-      type="text/javascript"
-      src="https://cdn.rawgit.com/rii-mango/Papaya/master/release/current/standard/papaya.js"
-    ></script>
+    <script src="https://cdn.jsdelivr.net/npm/papaya-viewer@latest/release/current/standard/papaya.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@1.5.2"></script>
 
     <script type="text/javascript" src="libs/nifti-reader.js"></script>
     <script type="text/javascript" src="libs/nifti-reader-min.js"></script>
+
+
     <script type="text/javascript">
       var params = [];
       params["images"] = ["https://gaiborjosue.github.io/brainchop/experimental_mode/CanvasVersion/MRI Sample/t1_c.nii.gz"];
@@ -119,29 +118,31 @@
             let dimensions = [papayaContainers[0].viewer.screenVolumes[0].volume.header.imageDimensions.xDim, papayaContainers[0].viewer.screenVolumes[0].volume.header.imageDimensions.yDim, papayaContainers[0].viewer.screenVolumes[0].volume.header.imageDimensions.zDim];
 
             let tensor = tf.tensor(arrayBuffer, dimensions);
-
+            
             tensor = tensor.reshape([-1, dimensions[2], dimensions[1], dimensions[0], 1]);
 
-            const model = await tf.loadLayersModel("https://raw.githubusercontent.com/gaiborjosue/brainchop/master/models/model5_gw_ae/model.json");
+            const model = await tf.loadLayersModel("https://raw.githubusercontent.com/gaiborjosue/brainchop/master/models/model11_gw_ae/model.json");
 
             const prediction = model.predict(tensor);
-
+            
+            console.log(prediction.shape)
             //*************************************************************//
             let predictionArray = prediction.dataSync();
 
+            predictionArray = tf.argMax(prediction, 4).squeeze([0]);
+
             let predictionArrayB = createNiftiOutArrayBuffer(arrayBuffer, Array.from(predictionArray));
 
+            var params = [];
+            params["binaryImages"] = [predictionArray]
 
-            let params = [];
+            // Now you can use `arrayBuffer` with Papaya's API
+            // For example, to add the image to Papaya viewer
+            papaya.Container.resetViewer(0, params);
 
-            params["binaryImages"] = [predictionArrayB];
-
-            params["binaryImages"] = {lut: "Spectrum"};
-            
-
-            papaya.Container.addImage(0, [predictionArrayB], {"binaryImages": {lut: "Spectrum"}});
+            tf.dispose([tensor, prediction]);
+            };
         
-        }
 
         setTimeout(() => {
             papaya.Container.startPapaya();
