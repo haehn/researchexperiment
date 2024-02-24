@@ -20,6 +20,95 @@
 
     <script type="text/javascript">
 
+        binarizeVolumeDataTensor = (volumeDataTensor) => {
+
+        let alpha = 0;
+        // element-wise: (x > 0 ? 1 : alpha * x );  e.g. Tenosr [0, 0.9, 0.8, -3] => Tensor [0, 1, 1, 0]   
+        return   volumeDataTensor.step(alpha); 
+
+        }
+
+        getAllSlices2D = (allSlices, slice_height, slice_width) => {
+            let allSlices_2D = [];
+            for(let sliceIdx = 0; sliceIdx < allSlices.length; sliceIdx ++){
+                allSlices_2D.push(tf.tensor(allSlices[sliceIdx], [slice_height, slice_width]));
+            }   
+
+            return   allSlices_2D;   
+        }
+
+        getSlices3D = (allSlices_2D) => {
+            return tf.stack(allSlices_2D);  
+        }
+
+        getAllSlicesData1D = (num_of_slices, niftiHeader, niftiImage) => {
+            let allSlices = [];
+            for(let sliceIdx = 0; sliceIdx < num_of_slices; sliceIdx++) {
+                let slice = getSliceData1D(sliceIdx, niftiHeader, niftiImage);
+                allSlices.push(slice);
+            }        
+
+            return   allSlices; 
+        }
+
+        getSliceData1D = (sliceIdx, niftiHeader, niftiImage) => {
+            // Get nifti dimensions
+            let cols = niftiHeader.dims[1]; // Slice width
+            let rows = niftiHeader.dims[2]; // Slice height
+
+            let typedData;
+
+            if (niftiHeader.datatypeCode === nifti.NIFTI1.TYPE_UINT8) {
+                typedData = new Uint8Array(niftiImage);
+            } else if (niftiHeader.datatypeCode === nifti.NIFTI1.TYPE_INT16) {
+                typedData = new Int16Array(niftiImage);
+            } else if (niftiHeader.datatypeCode === nifti.NIFTI1.TYPE_INT32) {
+                typedData = new Int32Array(niftiImage);
+            } else if (niftiHeader.datatypeCode === nifti.NIFTI1.TYPE_FLOAT32) {
+                typedData = new Float32Array(niftiImage);
+            } else if (niftiHeader.datatypeCode === nifti.NIFTI1.TYPE_FLOAT64) {
+                typedData = new Float64Array(niftiImage);
+            } else if (niftiHeader.datatypeCode === nifti.NIFTI1.TYPE_INT8) {
+                typedData = new Int8Array(niftiImage);
+            } else if (niftiHeader.datatypeCode === nifti.NIFTI1.TYPE_UINT16) {
+                typedData = new Uint16Array(niftiImage);
+            } else if (niftiHeader.datatypeCode === nifti.NIFTI1.TYPE_UINT32) {
+                typedData = new Uint32Array(niftiImage);
+            } else {
+                return;
+            }
+
+            // offset to specified slice
+            let sliceSize = cols * rows;
+
+            let sliceOffset = sliceSize * sliceIdx;
+
+            let data1DimArr = [];
+
+            // Draw pixels
+            for (let row = 0; row < rows; row++) {
+                let rowOffset = row * cols;
+
+                for (let col = 0; col < cols; col++) {
+                    let offset = sliceOffset + rowOffset + col;
+                    let value = typedData[offset];
+                    // Create 1Dim Array of pixel value, this 1 dim represents one channel 
+                    data1DimArr[(rowOffset + col)] = value & 0xFF;
+
+                }
+            }            
+
+            return data1DimArr;    
+        }
+
+        normalizeVolumeData = (volumeData) => {
+            //Normalize the data to the range 0 - 1 using min-max scaling
+            const volumeData_Max = volumeData.max();
+            const volumeData_Min = volumeData.min();
+            const normalizedSlices_3d = volumeData.sub(volumeData_Min).div(volumeData_Max.sub(volumeData_Min));
+            return  normalizedSlices_3d;      
+	    }
+
         array2ArrayBuffer = (array, datatypeCode) => {
           let typedArray;
 
@@ -79,7 +168,7 @@
 
         createNiftiOutArrayBuffer = (rawData, data) => {
           // read rawNiftiData header
-          let header = papayaContainers[0].viewer.volume.header.fileFormat.nifti;
+          let header = papayaContainers[0].viewer.screenVolumes[0].volume.header.fileFormat.nifti;
           let imageData = [];
           let outNifti = []
           let headerArrBuf = [];
@@ -110,37 +199,40 @@
         };
 
         async function loadModel() {
-        // Tensorflow.js
 
             let arrayBuffer = papayaContainers[0].viewer.screenVolumes[0].volume.imageData.data;
-            
+
+            let niftiHeader = papayaContainers[0].viewer.screenVolumes[0].volume.header.fileFormat.nifti;
 
             let dimensions = [papayaContainers[0].viewer.screenVolumes[0].volume.header.imageDimensions.xDim, papayaContainers[0].viewer.screenVolumes[0].volume.header.imageDimensions.yDim, papayaContainers[0].viewer.screenVolumes[0].volume.header.imageDimensions.zDim];
 
             let tensor = tf.tensor(arrayBuffer, dimensions);
-            
+
             tensor = tensor.reshape([-1, dimensions[2], dimensions[1], dimensions[0], 1]);
 
             const model = await tf.loadLayersModel("https://raw.githubusercontent.com/gaiborjosue/brainchop/master/models/model11_gw_ae/model.json");
 
             const prediction = model.predict(tensor);
-            
-            console.log(prediction.shape)
+
             //*************************************************************//
             let predictionArray = prediction.dataSync();
 
-            predictionArray = tf.argMax(prediction, 4).squeeze([0]);
+            let prediction_argmax = tf.argMax(prediction, -1);
 
-            let predictionArrayB = createNiftiOutArrayBuffer(arrayBuffer, Array.from(predictionArray));
+            let labelArrayBuffer;
 
-            var params = [];
-            params["binaryImages"] = [predictionArray]
+            let brainMask = Array.from(prediction_argmax.dataSync());
 
-            // Now you can use `arrayBuffer` with Papaya's API
-            // For example, to add the image to Papaya viewer
-            papaya.Container.resetViewer(0, params);
+            labelArrayBuffer = createNiftiOutArrayBuffer(arrayBuffer, brainMask);
 
-            tf.dispose([tensor, prediction]);
+            // prediction_argmax = prediction_argmax.reshape([dimensions[2], dimensions[1], dimensions[0]]);
+            console.log(labelArrayBuffer);
+            let nparams = [];
+
+            nparams["binaryImages"] = {"lut": "Spectrum"};
+
+            papaya.Container.addImage(0, [labelArrayBuffer], nparams);
+
             };
         
 
