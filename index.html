@@ -11,7 +11,7 @@
 
     <script type="text/javascript">
       var params = [];
-      params["images"] = ["https://gaiborjosue.github.io/brainchop/experimental_mode/CanvasVersion/MRI Sample/t1_c.nii.gz"];
+      params["images"] = ["https://gaiborjosue.github.io/researchexperiment/avf.nii.gz"];
       params["fullScreen"] = true;
     </script>
   </head>
@@ -206,16 +206,16 @@
 
             let dimensions = [papayaContainers[0].viewer.screenVolumes[0].volume.header.imageDimensions.xDim, papayaContainers[0].viewer.screenVolumes[0].volume.header.imageDimensions.yDim, papayaContainers[0].viewer.screenVolumes[0].volume.header.imageDimensions.zDim];
 
-            let tensor = tf.tensor(arrayBuffer, dimensions);
+            // let tensor = tf.tensor(arrayBuffer, dimensions);
 
-            tensor = tensor.reshape([-1, dimensions[2], dimensions[1], dimensions[0], 1]);
+            // tensor = tensor.reshape([-1, dimensions[2], dimensions[1], dimensions[0], 1]);
 
-            const model = await tf.loadLayersModel("https://raw.githubusercontent.com/gaiborjosue/brainchop/master/models/model11_gw_ae/model.json");
+            // const model = await tf.loadLayersModel("https://raw.githubusercontent.com/gaiborjosue/brainchop/master/models/model11_gw_ae/model.json");
 
-            const prediction = model.predict(tensor);
+            // const prediction = model.predict(tensor);
 
             //*************************************************************//
-            let predictionArray = prediction.dataSync();
+            /* let predictionArray = prediction.dataSync();
 
             let prediction_argmax = tf.argMax(prediction, -1);
 
@@ -226,12 +226,13 @@
             labelArrayBuffer = createNiftiOutArrayBuffer(arrayBuffer, brainMask);
 
             // prediction_argmax = prediction_argmax.reshape([dimensions[2], dimensions[1], dimensions[0]]);
-            console.log(labelArrayBuffer);
+            console.log(labelArrayBuffer); */
+
             let nparams = [];
 
             nparams["binaryImages"] = {"lut": "Spectrum"};
 
-            papaya.Container.addImage(0, [labelArrayBuffer], nparams);
+            // papaya.Container.addImage(0, [labelArrayBuffer], nparams);
 
             };
         
