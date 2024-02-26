@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Papaya Viewer</title>
+    <script src="https://cdn.jsdelivr.net/npm/papaya-viewer@latest/release/current/standard/papaya.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@1.5.2"></script>
+
+    <script type="text/javascript" src="libs/nifti-reader.js"></script>
+    <script type="text/javascript" src="libs/nifti-reader-min.js"></script>
+
+
+    <script type="text/javascript">
+      var params = [];
+      params["images"] = ["https://gaiborjosue.github.io/researchexperiment/avf.nii.gz"];
+      params["fullScreen"] = true;
+    </script>
+  </head>
+  <body>
+    <div class="papaya" data-params="params"></div>
+
+    <script type="text/javascript">
+
+        async function loadModel() {
+
+            let arrayBuffer = papayaContainers[0].viewer.screenVolumes[0].volume.imageData.data;
+
+            let niftiHeader = papayaContainers[0].viewer.screenVolumes[0].volume.header.fileFormat.nifti;
+
+            let dimensions = [papayaContainers[0].viewer.screenVolumes[0].volume.header.imageDimensions.xDim, papayaContainers[0].viewer.screenVolumes[0].volume.header.imageDimensions.yDim, papayaContainers[0].viewer.screenVolumes[0].volume.header.imageDimensions.zDim];
+
+            //*********** Overlay as an array buffer ***********
+
+            // let nparams = [];
+
+            // nparams["binaryImages"] = {"lut": "Spectrum"};
+
+            // papaya.Container.addImage(0, [labelArrayBuffer], nparams);
+
+            };
+        
+
+        setTimeout(() => {
+            papaya.Container.startPapaya();
+            loadModel();
+        }, 2000);
+
+    
+    </script>
+
+    
+  </body>
+</html>
