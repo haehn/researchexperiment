@@ -20,8 +20,7 @@
             image = papayaContainers[0].viewer.screenVolumes[0].volume.imageData.data;
 
             nparams = [];
-            nparams["avf.nii.gz"] = {"lut": "Spectrum"};
-
+            nparams["avf.nii.gz"] =  {"min": 1, "max": 8, "lut": "Red Overlay"};
             papaya.Container.addImage(0, ["https://gaiborjosue.github.io/researchexperiment/avf.nii.gz"], nparams);
 
 
@@ -40,7 +39,11 @@
 
           nnew = new Float32Array(old);
 
-          nnew.fill(1000)
+          nnew.fill(0); // reset to zero
+
+          nnew.fill(3, 0, 2000); // set some to 3
+          nnew.fill(6, 3000, 4000); // set some to 6
+          // note this can be calculated based on volume dimensions to set x,y,z directly for full control but we set the whole array anyways from tf output
 
           papayaContainers[0].viewer.screenVolumes[1].volume.imageData.data = nnew;
 
