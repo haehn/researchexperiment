@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Papaya Viewer</title>
+    <script src="libs/papaya.min.js"></script>
+
+    <script type="text/javascript">
+      var params = [];
+      params["images"] = ["https://gaiborjosue.github.io/researchexperiment/avf.nii.gz"];
+      params["fullScreen"] = true;
+    </script>
+  </head>
+  <body>
+    <div class="papaya" data-params="params"></div>
+
+    <script type="text/javascript">
+
+        async function loadModel() {
+
+            image = papayaContainers[0].viewer.screenVolumes[0].volume.imageData.data;
+
+            nparams = [];
+            nparams["avf.nii.gz"] = {"lut": "Spectrum"};
+
+            papaya.Container.addImage(0, ["https://gaiborjosue.github.io/researchexperiment/avf.nii.gz"], nparams);
+
+
+            };
+        
+
+        setTimeout(() => {
+            papaya.Container.startPapaya();
+            loadModel();
+        }, 2000);
+
+
+        function updateSegmentation() {
+
+          old = papayaContainers[0].viewer.screenVolumes[1].volume.imageData.data;
+
+          nnew = new Float32Array(old);
+
+          nnew.fill(1000)
+
+          papayaContainers[0].viewer.screenVolumes[1].volume.imageData.data = nnew;
+
+          // force redraw
+          papayaContainers[0].viewer.resizeViewer([200,200])
+
+
+        }
+
+
+    </script>
+
+    
+  </body>
+</html>
